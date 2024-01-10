@@ -9,10 +9,11 @@ import java.util.*;
 
 public class TwoSum {
     public static void main(String[] args) {
-        int[] nums = {2, 7, 11, 15};
-        int target = 9;
+        int[] nums = {3, 2, 4};
+        int target = 6;
         System.out.println(Arrays.toString(twoSum1(nums, target)));
         System.out.println(Arrays.toString(twoSum2(nums, target)));
+        System.out.println(Arrays.toString(twoSum3(nums, target)));
     }
 
     /**
@@ -55,6 +56,35 @@ public class TwoSum {
             answer.remove(answer.size() - 1);
         }
         return null;
+    }
+
+    /**
+     * 투포인터를 활용한 풀이
+     */
+    public static int[] twoSum3(int[] nums, int target) {
+        int[][] arr = new int[nums.length][2];
+        int left = 0;
+        int right = nums.length - 1;
+
+        for (int i = 0; i < nums.length; i++) {
+            arr[i][0] = nums[i];
+            arr[i][1] = i;
+        }
+
+        Arrays.sort(arr, (o1, o2) -> {
+            return o1[0] - o2[0];
+        });
+
+        while (left < right) {
+            if (arr[left][0] + arr[right][0] < target) {
+                left++;
+            } else if (arr[left][0] + arr[right][0] > target) {
+                right--;
+            }else{
+                return new int[]{arr[left][1], arr[right][1]};
+            }
+        }
+        return new int[]{-1, -1};
     }
 
 
