@@ -1,8 +1,6 @@
 package Backjoon;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -10,113 +8,151 @@ import java.util.*;
  * link : https://www.acmicpc.net/problem/17142
  */
 public class Laboratory3 {
-    static List<int[]> virusList = new ArrayList<>();
-    static int minTime = Integer.MAX_VALUE;
-    static int wallCnt = 0;
-    static int virusCnt = 0;
-    final static int[][] moves = new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     public static void main(String[] args) throws IOException {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        String[] line = reader.readLine().split(" ");
+        final int N = Integer.parseInt(line[0]);
+        final int M = Integer.parseInt(line[1]);
 
-        String[] input = br.readLine().split(" ");
-        int n = Integer.parseInt(input[0]);
-        int m = Integer.parseInt(input[1]);
+        char[][] map = new char[N][N];
+        List<Point> poison = new ArrayList<>();
 
-        int[][] map = new int[n][n];
-        for (int i = 0; i < n; i++) {
-            String[] arr = br.readLine().split(" ");
-            for (int j = 0; j < n; j++) {
-                map[i][j] = Integer.parseInt(arr[j]);
-                if (map[i][j] == 2) {
-                    virusList.add(new int[]{i, j});
-                }
-            }
-        }
-        for (int i = 0; i < map.length; i++) {
-            for (int j = 0; j < map.length; j++) {
-                if (map[i][j] == 1) {
-                    wallCnt++;
-                } else if (map[i][j] == 2) {
-                    virusCnt++;
+        // 감염시켜야 하는 칸의 총 갯수를 구한다.
+        int target = 0;
+        for (int r = 0; r < N; r++) {
+            StringTokenizer st = new StringTokenizer(reader.readLine());
+            for (int c = 0; c < N; c++) {
+                map[r][c] = st.nextToken().charAt(0);
+                switch (map[r][c]) {
+                    case '0': target++; break;
+                    case '2': poison.add(new Point(r, c));
                 }
             }
         }
 
-        backtracking(0, m, virusList, new ArrayList<>(), map);
+        // 처음 활성화시킬 바이러스의 조합을 모두 생성한다.
+        List<Set<Integer>> comb = combination(poison.size(), M);
+//        System.out.println("comb = " + comb);
 
-        if (minTime == Integer.MAX_VALUE) {
-            System.out.println(-1);
-        }else{
-            System.out.println(minTime);
-        }
-
-    }
-
-    public static void backtracking(int start, int k, List<int[]> virusList, List<Integer> cur, int[][] map) {
-        if (cur.size() == k) {
-            int curTime = 0;
-            Queue<Vertex> queue = new LinkedList<>();
-            Map<Vertex, Integer> visited = new HashMap<>();
-
-            for (int activeIdx : cur) {
-                int[] activeVirus = virusList.get(activeIdx);
-                queue.offer(new Vertex(activeVirus[0], activeVirus[1]));
-                visited.put(new Vertex(activeVirus[0], activeVirus[1]), 0);
+        int result = Integer.MAX_VALUE;
+        int[] dr = { -1,  0,  1,  0 };
+        int[] dc = {  0, -1,  0,  1 };
+        // 각 활성화 조합에 대해 탐색을 시작한다.
+        for (Set<Integer> active : comb) {
+            // 원본을 유지하기 위해 맵을 카피
+            char[][] copy = copyMap(map);
+            int infacted = 0;
+            int time = 0;
+            // 모든 활성화 바이러스의 위치를 큐에 넣는다.
+            Queue<Entry> queue = new ArrayDeque<>();
+            for (Integer i : active) {
+                Point p = poison.get(i);
+                queue.add(new Entry(p, 0));
+                copy[p.r][p.c] = '1';
             }
 
             while (!queue.isEmpty()) {
-                Vertex now = queue.poll();
+                Entry cur = queue.remove();
+//                if (time < cur.t) {
+//                    System.out.println("time: " + cur.t);
+//                    printMap(copy);
+//                }
 
-                for (int[] move : moves) {
-                    int nextRow = now.row + move[0];
-                    int nextCol = now.col + move[1];
-                    int time = visited.get(now);
-                    if (nextRow >= 0 && nextRow < map.length && nextCol >= 0 && nextCol < map.length) {
-                        if (!visited.containsKey(new Vertex(nextRow, nextCol)) && map[nextRow][nextCol] != 1) {
-                            queue.offer(new Vertex(nextRow, nextCol));
-                            visited.put(new Vertex(nextRow, nextCol), time + 1);
-                            curTime = Math.max(curTime, time + 1);
+                for (int i = 0; i < 4; i++) {
+                    Point next = new Point(cur.p.r + dr[i], cur.p.c + dc[i]);
+                    if (next.inRange(N, N) && copy[next.r][next.c] != '1') {
+                        if (copy[next.r][next.c] == '0') {
+                            infacted++;
+                            time = cur.t + 1;
                         }
+                        // 이미 방문한 곳은 '1'으로 표시한다.
+                        copy[next.r][next.c] = '1';
+                        queue.add(new Entry(next, cur.t + 1));
                     }
                 }
+
+                // 모두 감염시켰다면 빠져나온다.
+                if (infacted == target) break;
             }
 
-            System.out.println(map.length * map.length - wallCnt - visited.size());
-            if (map.length * map.length - wallCnt - visited.size()  == 0) {
-                minTime = Math.min(curTime, minTime);
+//            System.out.println(active + ": " + time);
+            if (infacted == target)
+                result = Math.min(result, time);
+        }
+
+        System.out.println((result == Integer.MAX_VALUE) ? -1 : result);
+    }
+
+    // 디버깅용 메소드
+    static void printMap(char[][] map) throws IOException {
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out));
+        for (char[] row : map) {
+            for (char c : row) {
+                writer.write(c);
             }
+            writer.newLine();
+        }
+        writer.flush();
+    }
+
+    static char[][] copyMap(char[][] map) {
+        char[][] result = new char[map.length][map[0].length];
+        for (int r = 0; r < map.length; r++) {
+            System.arraycopy(map[r], 0, result[r], 0, map[r].length);
+        }
+        return result;
+    }
+
+    static List<Set<Integer>> combination(int n, int k) {
+        List<Set<Integer>> result = new ArrayList<>();
+        Set<Integer> temp = new HashSet<>();
+        for (int i = 0; i < n; i++) {
+            temp.add(i);
+            recursion(n, k, result, temp, i);
+            temp.remove(i);
+        }
+        return result;
+    }
+
+    static void recursion(int n, int k, List<Set<Integer>> result, Set<Integer> temp, int index) {
+        if (temp.size() == k) {
+            result.add(new HashSet<>(temp));
             return;
         }
 
-        for (int i = start; i < virusList.size(); i++) {
-            if (!cur.contains(i)) {
-                cur.add(i);
-                backtracking(i + 1, k, virusList, cur, map);
-                cur.remove(cur.size() - 1);
-            }
+        for (int i = index + 1; i < n; i++) {
+            temp.add(i);
+            recursion(n, k, result, temp, i);
+            temp.remove(i);
         }
     }
 
-    public static class Vertex {
-        int row;
-        int col;
+    static class Entry {
+        Point p;
+        int t;
 
-        public Vertex(int row, int col){
-            this.row = row;
-            this.col = col;
+        public Entry(Point p, int t) {
+            this.p = p;
+            this.t = t;
+        }
+    }
+
+    static class Point {
+        int r;
+        int c;
+
+        public Point(int r, int c) {
+            this.r = r;
+            this.c = c;
+        }
+
+        public boolean inRange(int n, int m) {
+            return r >= 0 && r < n && c >= 0 && c < m;
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Vertex vertex = (Vertex) o;
-            return row == vertex.row && col == vertex.col;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(row, col);
+        public String toString() {
+            return "(" + r + "," + c + ")";
         }
     }
 }
