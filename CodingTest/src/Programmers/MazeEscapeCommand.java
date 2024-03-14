@@ -1,85 +1,62 @@
 package Programmers;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 미로 탈출 명령어
  * link : https://school.programmers.co.kr/learn/courses/30/lessons/150365
  */
 public class MazeEscapeCommand {
-    static int[][] map;
-    static List<String> resultList;
-    static int[][] moves = new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-    static Map<Integer[], Boolean> visitedDepth = new HashMap<>();
-
+    // 사전순 (d l r u)
+    final static int[][] moves = new int[][]{{1, 0}, {0, -1}, {0, 1}, {-1, 0}};
+    static String result = "impossible";
     public static void main(String[] args) {
-        System.out.println(solution(2, 2, 1, 1, 2, 2, 2));
+        System.out.println(solution(3, 4, 2, 3, 3, 1, 5));
     }
 
     public static String solution(int n, int m, int x, int y, int r, int c, int k) {
-        map = new int[n][m];
-        resultList = new ArrayList<>();
+        List<String> cur = new ArrayList<>();
+        dfs(n, m, x, y, r, c, k, cur);
 
-        dfs(x - 1, y - 1, r - 1, c - 1, k, 0, new StringBuffer());
-
-        if (resultList.size() == 0) {
-            return "impossible";
-        }
-
-        int shortDistance = Math.abs(x - r) + Math.abs(y - c);
-
-        if (shortDistance % 2 == 0) {
-            if (k % 2 != 0) {
-                return "impossible";
-            }
-        } else {
-            if (k % 2 == 0) {
-                return "impossible";
-            }
-        }
-
-        Collections.sort(resultList);
-        return resultList.get(0);
+        return result;
     }
 
-    public static void dfs(int x, int y, int r, int c, int k, int depth, StringBuffer sb) {
-        if (x == r && y == c && depth == k) {
-            resultList.add(sb.toString());
-            return;
-        }
-        if (visitedDepth.containsKey(new Integer[]{x, y})) {
-            return;
-        }else{
-            visitedDepth.put(new Integer[]{x, y}, true);
-        }
-
-        int shortDistance = Math.abs(x - r) + Math.abs(y - c);
-        int hasStep = k - depth;
-
-        if (shortDistance > hasStep) {
+    public static void dfs(int n, int m, int curR, int curC, int r, int c, int k, List<String> cur) {
+        if (curR == r && curC == c && k==0) {
+            result = cur.stream().collect(Collectors.joining());
             return;
         }
 
+        int distance = calculateDistance(curR, curC, r, c);
 
+        if (distance > k || Math.abs(k - distance) % 2 != 0) {
+            return;
+        }
 
         for (int[] move : moves) {
-            int nextX = x + move[0];
-            int nextY = y + move[1];
+            int moveR = move[0], moveC = move[1];
+            int nextR = curR + moveR, nextC = curC + moveC;
 
-            if (nextX >= 0 && nextX < map.length && nextY >= 0 && nextY < map[0].length) {
-                if (move[0] == 1 && move[1] == 0) {
-                    sb.append("d");
-                } else if (move[0] == -1 && move[1] == 0) {
-                    sb.append("u");
-                } else if (move[0] == 0 && move[1] == 1) {
-                    sb.append("r");
-                } else if (move[0] == 0 && move[1] == -1) {
-                    sb.append("l");
+            if (nextR >= 1 && nextR <= n && nextC >= 1 && nextC <= m) {
+                if (moveR == 1 && moveC == 0)       cur.add("d");
+                else if (moveR == 0 && moveC == -1) cur.add("l");
+                else if (moveR == 0 && moveC == 1)  cur.add("r");
+                else if (moveR == -1 && moveC == 0) cur.add("u");
+
+                dfs(n, m, nextR, nextC, r, c, k - 1, cur);
+
+                cur.remove(cur.size() - 1);
+
+                if (!result.equals("impossible")) {
+                    return;
                 }
-                dfs(nextX, nextY, r, c, k, depth + 1, sb);
-                sb.deleteCharAt(sb.length() - 1);
             }
         }
+    }
+
+    public static int calculateDistance(int curR, int curC, int r, int c) {
+        return Math.abs(r - curR) + Math.abs(c - curC);
     }
 
 }
